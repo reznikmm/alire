@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: 2020 Max Reznik <reznikmm@gmail.com>
+#
+# SPDX-License-Identifier: MIT
+
+on:
+  push:
+    branches:
+      - rpm
+name: Build
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build and deploy RPM
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: alire
+      - uses: reznikmm/fedora-ada-action@12ad931
+        with:
+          spec: alire/packages/alire.spec
+      - uses: reznikmm/upload-bintray-docker-action@v2
+        with:
+          username: reznikmm
+          repository: matreshka
+          package: alire
+          version: 0.7.1
+          sourcePath: x86_64/*
+          override: 1
+          apiKey: ${{secrets.BINTRAY_API_KEY}}
+

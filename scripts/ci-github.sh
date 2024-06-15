@@ -7,6 +7,7 @@ set -o errexit
 set -o nounset
 
 export PATH+=:${PWD}/bin
+TARGET="${1:-}"
 
 # For Darwin, have to define OS=macOS for alr_env.gpr
 # Windows defines it anyway
@@ -15,7 +16,7 @@ export PATH+=:${PWD}/bin
 [ `uname -s` == "Darwin" ] && export OS=macOS
 
 # Build alr
-gprbuild -j0 -p -P alr_env
+gprbuild -j0 -p -P alr_env $TARGET
 
 # Disable distro detection if supported
 if [ "${ALIRE_DISABLE_DISTRO:-}" == "true" ]; then

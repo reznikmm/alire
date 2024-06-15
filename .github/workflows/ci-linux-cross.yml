@@ -1,0 +1,106 @@
+name: CI linux cross
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'doc/**'
+      - '**.md'
+      - '**.rst'
+      - '**.txt'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+env:
+  alire_index: ""
+  # Empty index: test with master of community index
+  # Otherwise: test with particular commit/branch
+  # e.g.: index: "git+https://github.com/alire-project/alire-index@deadbeef"
+
+jobs:
+
+  build:
+    name: CI on Linux arm64
+
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Install FSF toolchain
+      uses: alire-project/alr-install@v1
+      with:
+        crates: gnat_native gprbuild
+
+    - name: Install Python 3.x (required for the testsuite)
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install toolchain
+      run: |
+        sudo dpkg --add-architecture amd64
+        sudo dpkg --add-architecture arm64
+        echo 'deb [arch=arm64] http://ports.ubuntu.com/ jammy main restricted' > arm64.list
+        sudo mv -f arm64.list /etc/apt/sources.list.d/arm64.list
+        sudo sed -i -e 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list
+        sudo apt update
+        sudo apt install -y gcc-aarch64-linux-gnu gnat-12-aarch64-linux-gnu gnat-12 gprbuild make curl qemu-user-static python3-pip unzip
+        sudo apt-get download libc6:arm64
+        sudo dpkg -i ./libc6*_arm64.deb || true
+        mount | grep binfmt_misc
+        ls -l /proc/sys/fs/binfmt_misc || true
+
+    - name: Run test script
+      run: scripts/ci-github.sh --target=aarch64-linux-gnu
+      shell: bash
+      env:
+        BRANCH: ${{ github.base_ref }}
+        INDEX: ""
+
+    - name: Upload binaries
+      uses: actions/upload-artifact@v2
+      with:
+        name: alr-bin-linux-arm64.zip
+        path: |
+          bin/alr
+          LICENSE.txt
+
+    - name: Upload logs (if failed)
+      if: failure()
+      uses: actions/upload-artifact@master
+      with:
+        name: e3-log-linux-arm64.zip
+        path: testsuite/out
+
+    # Release steps start here. These only run during a release creation.
+
+    - name: Package binaries
+      if: (github.event_name == 'release')
+      run: zip alr-bin-linux-arm64.zip bin/alr LICENSE.txt
+
+    - name: Retrieve upload URL for the release
+      if: (github.event_name == 'release')
+      id: get_release
+      uses: bruceadams/get-release@v1.3.2
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
+    - name: Get release version
+      if: (github.event_name == 'release')
+      id: get_version
+      uses: battila7/get-version-action@v2
+
+    - name: Upload binary assets
+      if: (github.event_name == 'release')
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.get_release.outputs.upload_url }}
+        asset_path: alr-bin-linux.zip
+        asset_name: alr-${{ steps.get_version.outputs.version-without-v }}-bin-arm64-linux.zip
+        asset_content_type: application/zip

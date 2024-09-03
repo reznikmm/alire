@@ -7,6 +7,7 @@ set -o errexit
 set -o nounset
 
 export PATH+=:${PWD}/bin
+TARGET="${1:-}"
 
 # Import reusable bits
 pushd "$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -34,7 +35,7 @@ if [[ " $* " == *" build=false "* ]]; then
     echo "Skipping alr build, explicitly disabled via arguments"
 else
     export ALIRE_OS=$(get_OS)
-    gprbuild -j0 -p -P alr_env
+    gprbuild -j0 -p -P alr_env $TARGET
 fi
 
 # Disable distro detection if supported

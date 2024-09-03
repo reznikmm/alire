@@ -48,9 +48,11 @@ jobs:
         sudo mv -f arm64.list /etc/apt/sources.list.d/arm64.list
         sudo sed -i -e 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list
         sudo apt update
-        sudo apt install -y gcc-aarch64-linux-gnu gnat-12-aarch64-linux-gnu gnat-12 gprbuild make curl qemu-user-static python3-pip unzip
-        sudo apt-get download libc6:arm64
-        sudo dpkg -i ./libc6*_arm64.deb || true
+        sudo apt install -y --no-install-recommends \
+           gcc-aarch64-linux-gnu gnat-12-aarch64-linux-gnu gnat-12 \
+           gprbuild make curl python3-pip unzip\
+           aptitude qemu-user-static binfmt-support
+        sudo aptitude -y install libc6:arm64
         mount | grep binfmt_misc
         ls -l /proc/sys/fs/binfmt_misc || true
 
